@@ -5,13 +5,20 @@ import java.io.FileNotFoundException;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 
 import androidx.appcompat.app.AppCompatActivity;
 
 import android.Manifest;
+import android.graphics.Bitmap;
+import android.graphics.BitmapFactory;
+import android.graphics.Matrix;
+import android.graphics.Rect;
 import android.net.Uri;
 import android.os.Environment;
+import android.view.MotionEvent;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.View;
@@ -27,6 +34,8 @@ import android.content.pm.PackageManager;
 import android.content.Context;
 import android.widget.Button;
 import android.widget.FrameLayout;
+import android.widget.ImageView;
+import android.widget.TextView;
 
 import static android.provider.MediaStore.Files.FileColumns.MEDIA_TYPE_IMAGE;
 
@@ -36,11 +45,13 @@ public class MainActivity extends AppCompatActivity {
 
     private Camera mCamera;
     private CameraPreview mPreview;
+    private TextView quote;
+    private ImageView img;
+
+    private int currentCameraId = 1; //camara frontal
     public static final int MEDIA_TYPE_IMAGE = 1;
     public static final int MEDIA_TYPE_VIDEO = 2;
-
-
-
+    private static  final int FOCUS_AREA_SIZE= 300;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -57,7 +68,7 @@ public class MainActivity extends AppCompatActivity {
         }
 
         // Create an instance of Camera
-        mCamera = getCameraInstance();
+        mCamera = getCameraInstance(currentCameraId);
 
         // Create our Preview view and set it as the content of our activity.
         mPreview = new CameraPreview(this, mCamera);
@@ -66,18 +77,53 @@ public class MainActivity extends AppCompatActivity {
 
 
 
-
+    //hacer foto
         Button captureButton = (Button) findViewById(R.id.button_capture);
+        img= (ImageView)  findViewById(R.id.imageView);
+
         captureButton.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
                         // get an image from the camera
+                        quote = (TextView)  findViewById(R.id.quote);
                         mCamera.takePicture(null, null, mPicture);
-                        releaseCamera();
+                        if(quote.getVisibility() == View.VISIBLE){ //si es Visible lo pones Gone
+                            quote.setVisibility(View.GONE);
+                        }else{ // si no es Visible, lo pones
+                            quote.setVisibility(View.VISIBLE);
+                        }
+
                     }
                 }
         );
+
+        Button otherCamera = (Button) findViewById(R.id.button_switch);
+
+        otherCamera.setOnClickListener(
+                new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+
+                releaseCamera();
+
+                //swap the id of the camera to be used
+                if(currentCameraId == Camera.CameraInfo.CAMERA_FACING_BACK){
+                    currentCameraId = Camera.CameraInfo.CAMERA_FACING_FRONT;
+                }
+                else {
+                    currentCameraId = Camera.CameraInfo.CAMERA_FACING_BACK;
+                }
+                mCamera = getCameraInstance(currentCameraId);
+                mPreview = new CameraPreview(getBaseContext(), mCamera);
+                FrameLayout preview = (FrameLayout) findViewById(R.id.camera_preview);
+                preview.addView(mPreview);
+
+            }
+        });
+
+
+
 
     }
 
@@ -92,11 +138,16 @@ public class MainActivity extends AppCompatActivity {
         }
     }
 
-    public static Camera getCameraInstance(){
+    public static Camera getCameraInstance(int id){
         Camera c = null;
         try {
-            c = Camera.open(); // attempt to get a Camera instance
+            c = Camera.open(id); // attempt to get a Camera instance
             c.setDisplayOrientation(90);
+            Camera.Parameters p =c.getParameters();
+            p.setFocusMode(Camera.Parameters.FOCUS_MODE_AUTO);
+
+            c.setParameters(p);
+
         }
         catch (Exception e){
             // Camera is not available (in use or does not exist)
@@ -156,6 +207,7 @@ public class MainActivity extends AppCompatActivity {
             try {
                 mCamera.setPreviewDisplay(mHolder);
                 mCamera.startPreview();
+                mCamera.autoFocus(null);
 
             } catch (Exception e){
                 //Log.d(TAG, "Error starting camera preview: " + e.getMessage());
@@ -210,6 +262,14 @@ public class MainActivity extends AppCompatActivity {
         @Override
         public void onPictureTaken(byte[] data, Camera camera) {
 
+
+            Bitmap photo = BitmapFactory.decodeByteArray(data , 0, data.length);
+            Matrix matrix = new Matrix();
+            matrix.postRotate(90);
+            photo = Bitmap.createBitmap(photo, 0, 0, photo.getWidth(), photo.getHeight(), matrix, true);
+            img.setImageBitmap(photo);
+
+
             File pictureFile = getOutputMediaFile(MEDIA_TYPE_IMAGE);
             if (pictureFile == null){
                 // Log.d(TAG, "Error creating media file, check storage permissions");
@@ -242,7 +302,15 @@ public class MainActivity extends AppCompatActivity {
     }
 
 
+    public boolean onTouchEvent(MotionEvent event){
+        if(event.getAction() == MotionEvent.ACTION_DOWN){
+            Log.d("down", "focusing now");
 
+            mCamera.autoFocus(null);
+        }
+
+        return true;
+    }
 
 
 }
