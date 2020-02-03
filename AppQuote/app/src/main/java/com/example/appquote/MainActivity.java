@@ -78,14 +78,18 @@ public class MainActivity extends AppCompatActivity {
 
 
     //hacer foto
+       final Button close = (Button) findViewById(R.id.button_close);
         Button captureButton = (Button) findViewById(R.id.button_capture);
         img= (ImageView)  findViewById(R.id.imageView);
+
 
         captureButton.setOnClickListener(
                 new View.OnClickListener() {
                     @Override
                     public void onClick(View v) {
                         // get an image from the camera
+                        img.setVisibility(View.VISIBLE);
+                        close.setVisibility(View.VISIBLE);
                         quote = (TextView)  findViewById(R.id.quote);
                         mCamera.takePicture(null, null, mPicture);
                         if(quote.getVisibility() == View.VISIBLE){ //si es Visible lo pones Gone
@@ -123,7 +127,17 @@ public class MainActivity extends AppCompatActivity {
         });
 
 
+        close.setVisibility(View.GONE);
 
+        close.setOnClickListener(
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                    img.setVisibility(View.GONE);
+                    close.setVisibility(View.GONE);
+                    }
+
+                });
 
     }
 
@@ -265,7 +279,7 @@ public class MainActivity extends AppCompatActivity {
 
             Bitmap photo = BitmapFactory.decodeByteArray(data , 0, data.length);
             Matrix matrix = new Matrix();
-            matrix.postRotate(90);
+            matrix.postRotate(-90);
             photo = Bitmap.createBitmap(photo, 0, 0, photo.getWidth(), photo.getHeight(), matrix, true);
             img.setImageBitmap(photo);
 
